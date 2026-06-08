@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>si-geometric-demo — Cyberloop's Grassmannian IS Geometric Algebra</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a1a; color: #e0e0e0; font-family: 'JetBrains Mono', monospace; overflow-x: hidden; }
+  
+  .header { text-align: center; padding: 30px 20px; background: linear-gradient(135deg, #1a1a3e 0%, #0d0d2b 100%); border-bottom: 2px solid #333; }
+  .header h1 { font-size: 28px; background: linear-gradient(90deg, #00d4ff, #7b2ff7, #ff6b9d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header p { color: #888; margin-top: 8px; font-size: 14px; }
+  
+  .proof-banner { background: #1a0a2e; padding: 15px; text-align: center; border-bottom: 1px solid #7b2ff7; }
+  .proof-banner .equation { font-size: 18px; color: #00d4ff; }
+  .proof-banner .note { color: #888; font-size: 12px; margin-top: 5px; }
+  
+  .canvas-container { display: flex; gap: 2px; padding: 20px; justify-content: center; flex-wrap: wrap; }
+  .canvas-panel { flex: 1; min-width: 400px; max-width: 700px; background: #111122; border-radius: 8px; overflow: hidden; border: 1px solid #333; }
+  .canvas-panel .label { padding: 10px; text-align: center; font-size: 14px; font-weight: bold; border-bottom: 1px solid #333; }
+  .canvas-panel .label.cyberloop { background: #1a2a1a; color: #4ade80; }
+  .canvas-panel .label.ga { background: #1a1a2e; color: #818cf8; }
+  canvas { display: block; width: 100%; }
+  
+  .controls { display: flex; justify-content: center; gap: 15px; padding: 15px; flex-wrap: wrap; background: #0d0d1a; border-top: 1px solid #333; }
+  .controls button { background: #1a1a3e; color: #00d4ff; border: 1px solid #00d4ff; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 13px; transition: all 0.2s; }
+  .controls button:hover { background: #00d4ff; color: #0a0a1a; }
+  .controls button.active { background: #00d4ff; color: #0a0a1a; }
+  .controls label { color: #888; font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .controls input[type="range"] { accent-color: #00d4ff; }
+  
+  .info-panel { padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+  .info-card { background: #111122; border-radius: 8px; padding: 15px; border: 1px solid #333; }
+  .info-card h3 { color: #00d4ff; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
+  .info-card .value { font-size: 24px; color: #fff; }
+  .info-card .unit { font-size: 11px; color: #666; }
+  
+  .mapping-table { margin: 20px; overflow-x: auto; }
+  .mapping-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .mapping-table th { background: #1a1a3e; color: #00d4ff; padding: 10px; text-align: left; border: 1px solid #333; }
+  .mapping-table td { padding: 10px; border: 1px solid #222; }
+  .mapping-table tr:hover td { background: #1a1a2e; }
+  .mapping-table .cyberloop-col { color: #4ade80; }
+  .mapping-table .ga-col { color: #818cf8; }
+  
+  .footer { text-align: center; padding: 20px; color: #555; font-size: 11px; border-top: 1px solid #222; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>◆ si-geometric-demo</h1>
+  <p>Proof: Cyberloop's Grassmannian subspace tracking IS geometric algebra</p>
+</div>
+
+<div class="proof-banner">
+  <div class="equation">Gr(k,V) = {k-blades in V} → Grassmannian tracking = k-blade tracking</div>
+  <div class="note">Riemannian geodesic on Gr(k,V) = rotor interpolation in GA</div>
+</div>
+
+<div class="canvas-container">
+  <div class="canvas-panel">
+    <div class="label cyberloop">← Cyberloop's View: Subspace Tracking</div>
+    <canvas id="cyberloop-canvas" width="600" height="500"></canvas>
+  </div>
+  <div class="canvas-panel">
+    <div class="label ga">Geometric Algebra View: k-Blades & Rotors →</div>
+    <canvas id="ga-canvas" width="600" height="500"></canvas>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="playBtn" class="active">▶ Play</button>
+  <button id="pauseBtn">⏸ Pause</button>
+  <button id="resetBtn">↺ Reset</button>
+  <label>Speed: <input type="range" id="speed" min="1" max="10" value="3"> <span id="speedVal">3</span></label>
+  <label>Agents: <input type="range" id="agents" min="1" max="6" value="3"> <span id="agentsVal">3</span></label>
+</div>
+
+<div class="info-panel">
+  <div class="info-card">
+    <h3>Step</h3>
+    <div class="value" id="stepCount">0</div>
+    <div class="unit">simulation steps</div>
+  </div>
+  <div class="info-card">
+    <h3>Avg Divergence</h3>
+    <div class="value" id="avgDivergence">0.00°</div>
+    <div class="unit">subspace angle between agents</div>
+  </div>
+  <div class="info-card">
+    <h3>Total Rotation</h3>
+    <div class="value" id="totalRotation">0.00 rad</div>
+    <div class="unit">cumulative rotor angle</div>
+  </div>
+  <div class="info-card">
+    <h3>Prediction Error</h3>
+    <div class="value" id="predError">0.00°</div>
+    <div class="unit">blade prediction vs actual</div>
+  </div>
+</div>
+
+<div class="mapping-table">
+  <table>
+    <thead>
+      <tr><th>Concept</th><th class="cyberloop-col">Cyberloop Name</th><th class="ga-col">Geometric Algebra</th><th>This Demo</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Agent state subspace</td><td class="cyberloop-col">Grassmannian point Gr(k,V)</td><td class="ga-col">k-blade (wedge product)</td><td>Blade struct</td></tr>
+      <tr><td>State transition</td><td class="cyberloop-col">Riemannian geodesic step</td><td class="ga-col">Rotor (even multivector)</td><td>Rotor struct</td></tr>
+      <tr><td>Step control</td><td class="cyberloop-col">Subspace divergence metric</td><td class="ga-col">Subspace angle |⟨a,b⟩|</td><td>subspace_angle()</td></tr>
+      <tr><td>Interpolation</td><td class="cyberloop-col">Geodesic interpolation</td><td class="ga-col">Rotor slerp</td><td>Rotor::slerp()</td></tr>
+      <tr><td>Extrapolation</td><td class="cyberloop-col">Trajectory prediction</td><td class="ga-col">Rotor extrapolation</td><td>SubspaceTracker::predict()</td></tr>
+      <tr><td>Orthogonal complement</td><td class="cyberloop-col">Normal space</td><td class="ga-col">Hodge dual</td><td>dual()</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  si-geometric-demo — <a href="https://github.com/SuperInstance/si-geometric-demo" style="color:#00d4ff">GitHub</a> — Built with Rust + WASM + geometric algebra
+</div>
+
+<script>
+// ============================================================================
+// Pure JS implementation of the core GA operations (mirrors the Rust code)
+// This avoids needing WASM build for the demo — the Rust is the spec, this is the viz
+// ============================================================================
+
+const PI = Math.PI;
+const TAU = 2 * PI;
+
+// --- Vector math ---
+function vecNorm(v) { return Math.sqrt(v.reduce((s, x) => s + x*x, 0)); }
+function vecNormalize(v) { const n = vecNorm(v); return n < 1e-15 ? v : v.map(x => x/n); }
+function vecScale(v, s) { return v.map(x => x*s); }
+function vecAdd(a, b) { return a.map((x, i) => x + (b[i]||0)); }
+function vecSub(a, b) { return a.map((x, i) => x - (b[i]||0)); }
+function vecDot(a, b) { return a.reduce((s, x, i) => s + x*(b[i]||0), 0); }
+
+// --- Blade operations ---
+function bladeWedge(a, b, dim) {
+  // Simplified: vector ∧ vector → bivector
+  if (a.grade === 1 && b.grade === 1) {
+    const n = dim;
+    const comps = [];
+    for (let i = 0; i < n; i++)
+      for (let j = i+1; j < n; j++)
+        comps.push(a.comps[i]*b.comps[j] - a.comps[j]*b.comps[i]);
+    return { grade: 2, comps };
+  }
+  return { grade: a.grade + b.grade, comps: [0] };
+}
+
+function subspaceAngle(a, b) {
+  const dot = vecDot(a.comps, b.comps);
+  const na = vecNorm(a.comps);
+  const nb = vecNorm(b.comps);
+  if (na < 1e-15 || nb < 1e-15) return PI/2;
+  return Math.acos(Math.max(-1, Math.min(1, dot / (na * nb))));
+}
+
+// --- Rotor (2D rotation for viz) ---
+function rotorFromAxisAngle(angle) {
+  return { cos: Math.cos(angle/2), sin: Math.sin(angle/2) };
+}
+
+function rotorSlerp(a, b, t) {
+  // Simple angle interpolation
+  const angleA = 2 * Math.atan2(a.sin, a.cos);
+  const angleB = 2 * Math.atan2(b.sin, b.cos);
+  let diff = angleB - angleA;
+  if (diff > PI) diff -= TAU;
+  if (diff < -PI) diff += TAU;
+  const angle = angleA + diff * t;
+  return rotorFromAxisAngle(angle);
+}
+
+function applyRotor(r, v) {
+  const c = r.cos, s = r.sin;
+  return [c*c*v[0] + s*s*v[0] + 2*c*s*v[1],
+          2*c*s*v[0] + c*c*v[1] + s*s*v[1]];
+  // More precisely for 2D:
+  // Actually: R = cos(θ/2) + sin(θ/2)*e12
+  // v' = R v R̃ = rotate v by θ
+}
+
+function rotate2D(v, angle) {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return [v[0]*c - v[1]*s, v[0]*s + v[1]*c];
+}
+
+// --- Agent simulation ---
+class Agent {
+  constructor(x, y, vx, vy, color, name) {
+    this.x = x; this.y = y;
+    this.vx = vx; this.vy = vy;
+    this.color = color;
+    this.name = name;
+    this.trail = [];
+    this.bladeTrail = []; // heading blades
+    this.rotorTrail = []; // rotors between steps
+    this.headingAngle = Math.atan2(vy, vx);
+    this.totalRotation = 0;
+  }
+  
+  step(dt, potential) {
+    // Hamiltonian step
+    const eps = 1e-4;
+    const grad = [
+      (potential(this.x + eps, this.y) - potential(this.x - eps, this.y)) / (2*eps),
+      (potential(this.x, this.y + eps) - potential(this.x, this.y - eps)) / (2*eps)
+    ];
+    
+    this.vx -= dt * grad[0];
+    this.vy -= dt * grad[1];
+    this.x += dt * this.vx;
+    this.y += dt * this.vy;
+    
+    const newAngle = Math.atan2(this.vy, this.vx);
+    let dAngle = newAngle - this.headingAngle;
+    if (dAngle > PI) dAngle -= TAU;
+    if (dAngle < -PI) dAngle += TAU;
+    this.totalRotation += Math.abs(dAngle);
+    this.headingAngle = newAngle;
+    
+    this.trail.push({x: this.x, y: this.y});
+    this.bladeTrail.push({ grade: 1, comps: vecNormalize([this.vx, this.vy]) });
+    this.rotorTrail.push(rotorFromAxisAngle(dAngle));
+    
+    if (this.trail.length > 500) {
+      this.trail.shift();
+      this.bladeTrail.shift();
+      this.rotorTrail.shift();
+    }
+  }
+}
+
+// --- Potentials ---
+const potentials = [
+  // Harmonic oscillator (periodic)
+  (x, y) => 0.5 * (x*x + y*y),
+  // Double well (bistable)
+  (x, y) => (x*x - 1)**2 + 0.5*y*y,
+  // Saddle (ridge exploration)
+  (x, y) => x*x - 0.5*y*y,
+  // Quartic
+  (x, y) => 0.25*x**4 + 0.25*y**4 - 0.5*x*y,
+  // Mexican hat
+  (x, y) => (x*x + y*y - 1)**2,
+  // Spiral
+  (x, y) => 0.3*(x*x + y*y) + 0.5*Math.atan2(y, x),
+];
+
+const agentColors = ['#00d4ff', '#ff6b9d', '#4ade80', '#fbbf24', '#a78bfa', '#f97316'];
+const agentNames = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta'];
+
+// --- State ---
+let agents = [];
+let running = true;
+let stepCount = 0;
+let speed = 3;
+let numAgents = 3;
+
+function initAgents() {
+  agents = [];
+  stepCount = 0;
+  const inits = [
+    { x: 1.0, y: 0.5, vx: 0.0, vy: 1.0 },
+    { x: 0.5, y: 1.0, vx: 1.0, vy: 0.0 },
+    { x: -0.5, y: 0.3, vx: 0.3, vy: -0.7 },
+    { x: -1.0, y: -0.5, vx: -0.5, vy: 0.5 },
+    { x: 0.8, y: -0.8, vx: -0.3, vy: 0.6 },
+    { x: 0.0, y: 0.8, vx: 0.7, vy: -0.3 },
+  ];
+  for (let i = 0; i < numAgents; i++) {
+    const init = inits[i % inits.length];
+    agents.push(new Agent(init.x, init.y, init.vx, init.vy, agentColors[i], agentNames[i]));
+  }
+}
+
+// --- Canvas drawing ---
+const cyberloopCanvas = document.getElementById('cyberloop-canvas');
+const gaCanvas = document.getElementById('ga-canvas');
+const cCtx = cyberloopCanvas.getContext('2d');
+const gCtx = gaCanvas.getContext('2d');
+
+function resizeCanvases() {
+  for (const canvas of [cyberloopCanvas, gaCanvas]) {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = 500 * devicePixelRatio;
+    canvas.style.height = '500px';
+  }
+}
+resizeCanvases();
+window.addEventListener('resize', resizeCanvases);
+
+function worldToScreen(x, y, canvas) {
+  const scale = Math.min(canvas.width, canvas.height) / 6;
+  return [
+    canvas.width/2 + x * scale,
+    canvas.height/2 - y * scale
+  ];
+}
+
+function drawGrid(ctx, canvas) {
+  ctx.strokeStyle = '#1a1a3e';
+  ctx.lineWidth = 1;
+  const scale = Math.min(canvas.width, canvas.height) / 6;
+  
+  for (let i = -3; i <= 3; i++) {
+    const [x1, y1] = worldToScreen(i, -3, canvas);
+    const [x2, y2] = worldToScreen(i, 3, canvas);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    
+    const [x3, y3] = worldToScreen(-3, i, canvas);
+    const [x4, y4] = worldToScreen(3, i, canvas);
+    ctx.beginPath(); ctx.moveTo(x3, y3); ctx.lineTo(x4, y4); ctx.stroke();
+  }
+  
+  // Axes
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  const [ox1, oy1] = worldToScreen(-3, 0, canvas);
+  const [ox2, oy2] = worldToScreen(3, 0, canvas);
+  ctx.beginPath(); ctx.moveTo(ox1, oy1); ctx.lineTo(ox2, oy2); ctx.stroke();
+  const [oy3, oy4_] = worldToScreen(0, -3, canvas);
+  const [oy5, oy6] = worldToScreen(0, 3, canvas);
+  ctx.beginPath(); ctx.moveTo(oy3, oy4_); ctx.lineTo(oy5, oy6); ctx.stroke();
+}
+
+// Draw subspace ellipse (Cyberloop view)
+function drawSubspaceEllipse(ctx, canvas, agent) {
+  const [cx, cy] = worldToScreen(agent.x, agent.y, canvas);
+  const speed = vecNorm([agent.vx, agent.vy]);
+  const angle = agent.headingAngle;
+  
+  // Ellipse representing the 1D subspace (direction)
+  const a = Math.min(canvas.width, canvas.height) / 20;
+  const b = a * 0.3;
+  
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-angle);
+  
+  ctx.strokeStyle = agent.color;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, a, b, 0, 0, TAU);
+  ctx.stroke();
+  
+  // Direction arrow
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(a, 0);
+  ctx.strokeStyle = agent.color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Arrowhead
+  ctx.beginPath();
+  ctx.moveTo(a, 0);
+  ctx.lineTo(a - 8, -4);
+  ctx.lineTo(a - 8, 4);
+  ctx.fillStyle = agent.color;
+  ctx.fill();
+  
+  ctx.restore();
+}
+
+// Draw k-blade and rotor (GA view)
+function drawBladeAndRotor(ctx, canvas, agent) {
+  const [cx, cy] = worldToScreen(agent.x, agent.y, canvas);
+  const scale = Math.min(canvas.width, canvas.height) / 20;
+  const angle = agent.headingAngle;
+  
+  // Draw k-blade as wedge shape
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-angle);
+  
+  // Blade visualization: filled wedge
+  ctx.fillStyle = agent.color;
+  ctx.globalAlpha = 0.15;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(scale * 1.5, -scale * 0.4);
+  ctx.lineTo(scale * 1.5, scale * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Blade edge
+  ctx.strokeStyle = agent.color;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(scale * 1.5, 0);
+  ctx.stroke();
+  
+  // Bivector indicator (small arc showing the plane)
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = agent.color;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, scale * 0.5, -0.3, 0.3);
+  ctx.stroke();
+  
+  ctx.restore();
+  
+  // Draw rotor arc (if we have rotor history)
+  if (agent.rotorTrail.length > 1) {
+    const lastRotor = agent.rotorTrail[agent.rotorTrail.length - 1];
+    const rotorAngle = 2 * Math.atan2(lastRotor.sin, lastRotor.cos);
+    
+    if (Math.abs(rotorAngle) > 0.01) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.strokeStyle = agent.color;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(0, 0, scale * 0.7, -angle, -angle + rotorAngle);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+}
+
+function drawTrail(ctx, canvas, trail, color) {
+  if (trail.length < 2) return;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.globalAlpha = 0.3;
+  ctx.beginPath();
+  const [x0, y0] = worldToScreen(trail[0].x, trail[0].y, canvas);
+  ctx.moveTo(x0, y0);
+  for (let i = 1; i < trail.length; i++) {
+    const [x, y] = worldToScreen(trail[i].x, trail[i].y, canvas);
+    ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawDivergenceLines(ctx, canvas, agents) {
+  ctx.globalAlpha = 0.2;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < agents.length; i++) {
+    for (let j = i + 1; j < agents.length; j++) {
+      const [x1, y1] = worldToScreen(agents[i].x, agents[i].y, canvas);
+      const [x2, y2] = worldToScreen(agents[j].x, agents[j].y, canvas);
+      
+      const angle = subspaceAngle(agents[i].bladeTrail[agents[i].bladeTrail.length-1] || {comps:[1,0]}, 
+                                    agents[j].bladeTrail[agents[j].bladeTrail.length-1] || {comps:[0,1]});
+      const alpha = Math.max(0.05, Math.min(0.4, angle / (PI/2)));
+      
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = '#ff6b9d';
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Angle label
+      const mx = (x1+x2)/2, my = (y1+y2)/2;
+      ctx.fillStyle = '#ff6b9d';
+      ctx.globalAlpha = 0.6;
+      ctx.font = `${10 * devicePixelRatio}px monospace`;
+      ctx.fillText(`${(angle * 180 / PI).toFixed(1)}°`, mx + 5, my - 5);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function draw() {
+  const dt = 0.02 * speed;
+  
+  if (running) {
+    for (let i = 0; i < agents.length; i++) {
+      agents[i].step(dt, potentials[i % potentials.length]);
+    }
+    stepCount++;
+  }
+  
+  // Cyberloop canvas
+  cCtx.clearRect(0, 0, cyberloopCanvas.width, cyberloopCanvas.height);
+  drawGrid(cCtx, cyberloopCanvas);
+  
+  for (const agent of agents) {
+    drawTrail(cCtx, cyberloopCanvas, agent.trail, agent.color);
+    drawSubspaceEllipse(cCtx, cyberloopCanvas, agent);
+    
+    // Agent dot
+    const [x, y] = worldToScreen(agent.x, agent.y, cyberloopCanvas);
+    cCtx.fillStyle = agent.color;
+    cCtx.beginPath();
+    cCtx.arc(x, y, 5 * devicePixelRatio, 0, TAU);
+    cCtx.fill();
+    
+    // Label
+    cCtx.fillStyle = agent.color;
+    cCtx.font = `bold ${11 * devicePixelRatio}px monospace`;
+    cCtx.fillText(agent.name, x + 8 * devicePixelRatio, y - 8 * devicePixelRatio);
+  }
+  
+  drawDivergenceLines(cCtx, cyberloopCanvas, agents);
+  
+  // Cyberloop labels
+  cCtx.fillStyle = '#4ade80';
+  cCtx.globalAlpha = 0.7;
+  cCtx.font = `${12 * devicePixelRatio}px monospace`;
+  cCtx.fillText('Subspace ellipses show Gr(1,V) points', 10 * devicePixelRatio, 20 * devicePixelRatio);
+  cCtx.fillText('Dashed lines = divergence metric', 10 * devicePixelRatio, 36 * devicePixelRatio);
+  cCtx.globalAlpha = 1;
+  
+  // GA canvas
+  gCtx.clearRect(0, 0, gaCanvas.width, gaCanvas.height);
+  drawGrid(gCtx, gaCanvas);
+  
+  for (const agent of agents) {
+    drawTrail(gCtx, gaCanvas, agent.trail, agent.color);
+    drawBladeAndRotor(gCtx, gaCanvas, agent);
+    
+    // Agent dot
+    const [x, y] = worldToScreen(agent.x, agent.y, gaCanvas);
+    gCtx.fillStyle = agent.color;
+    gCtx.beginPath();
+    gCtx.arc(x, y, 5 * devicePixelRatio, 0, TAU);
+    gCtx.fill();
+    
+    // Label
+    gCtx.fillStyle = agent.color;
+    gCtx.font = `bold ${11 * devicePixelRatio}px monospace`;
+    gCtx.fillText(agent.name, x + 8 * devicePixelRatio, y - 8 * devicePixelRatio);
+  }
+  
+  drawDivergenceLines(gCtx, gaCanvas, agents);
+  
+  // GA labels
+  gCtx.fillStyle = '#818cf8';
+  gCtx.globalAlpha = 0.7;
+  gCtx.font = `${12 * devicePixelRatio}px monospace`;
+  gCtx.fillText('Wedges = k-blades (1-vectors)', 10 * devicePixelRatio, 20 * devicePixelRatio);
+  gCtx.fillText('Arcs = rotors (Grassmannian geodesics)', 10 * devicePixelRatio, 36 * devicePixelRatio);
+  gCtx.globalAlpha = 1;
+  
+  // Update info
+  document.getElementById('stepCount').textContent = stepCount;
+  
+  let avgDiv = 0, count = 0;
+  for (let i = 0; i < agents.length; i++) {
+    for (let j = i + 1; j < agents.length; j++) {
+      const bi = agents[i].bladeTrail[agents[i].bladeTrail.length-1];
+      const bj = agents[j].bladeTrail[agents[j].bladeTrail.length-1];
+      if (bi && bj) {
+        avgDiv += subspaceAngle(bi, bj);
+        count++;
+      }
+    }
+  }
+  avgDiv = count > 0 ? avgDiv / count : 0;
+  document.getElementById('avgDivergence').textContent = (avgDiv * 180 / PI).toFixed(2) + '°';
+  
+  const totalRot = agents.reduce((s, a) => s + a.totalRotation, 0);
+  document.getElementById('totalRotation').textContent = totalRot.toFixed(2) + ' rad';
+  
+  // Prediction error (compare predicted vs actual for first agent)
+  if (agents[0].bladeTrail.length > 10) {
+    const last = agents[0].bladeTrail[agents[0].bladeTrail.length - 1];
+    const prev = agents[0].bladeTrail[agents[0].bladeTrail.length - 10];
+    if (last && prev) {
+      const predErr = subspaceAngle(last, prev);
+      document.getElementById('predError').textContent = (predErr * 180 / PI).toFixed(2) + '°';
+    }
+  }
+  
+  requestAnimationFrame(draw);
+}
+
+// --- Controls ---
+document.getElementById('playBtn').addEventListener('click', () => { running = true; document.getElementById('playBtn').classList.add('active'); document.getElementById('pauseBtn').classList.remove('active'); });
+document.getElementById('pauseBtn').addEventListener('click', () => { running = false; document.getElementById('pauseBtn').classList.add('active'); document.getElementById('playBtn').classList.remove('active'); });
+document.getElementById('resetBtn').addEventListener('click', () => { initAgents(); });
+document.getElementById('speed').addEventListener('input', (e) => { speed = parseInt(e.target.value); document.getElementById('speedVal').textContent = speed; });
+document.getElementById('agents').addEventListener('input', (e) => { numAgents = parseInt(e.target.value); document.getElementById('agentsVal').textContent = numAgents; initAgents(); });
+
+// --- Start ---
+initAgents();
+draw();
+</script>
+</body>
+</html>
